@@ -1,0 +1,22 @@
+const express = require("express");
+const router = express.Router();
+const RecruiterVisit = require("../models/RecruiterVisit");
+
+// POST /api/login
+router.post("/login", async (req, res) => {
+  const { name, email, phone } = req.body;
+
+  if (!name || !email || !phone) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    const visit = new RecruiterVisit({ name, email, phone });
+    await visit.save();
+    res.status(200).json({ message: "Login successful" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to log recruiter visit" });
+  }
+});
+
+module.exports = router;

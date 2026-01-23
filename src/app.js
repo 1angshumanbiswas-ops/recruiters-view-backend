@@ -1,110 +1,78 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const mongoose = require('mongoose');
+import React, { useState } from "react";
+import RecruiterLogin from "./components/RecruiterLogin";
+import CandidateLogin from "./components/CandidateLogin";
+import ResumeDashboardRecruiter from "./components/ResumeDashboardRecruiter";
+import ResumeDashboardCandidate from "./components/ResumeDashboardCandidate";
+import ResumeDashboardAdmin from "./components/ResumeDashboardAdmin";
 
-const app = express();
+function App() {
+  const [view, setView] = useState("home"); // 'home', 'recruiter', 'candidate'
+  const [recruiterToken, setRecruiterToken] = useState(localStorage.getItem("recruiterToken") || null);
+  const [candidateToken, setCandidateToken] = useState(localStorage.getItem("candidateToken") || null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-// ===== Middleware =====
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(morgan('dev'));
+  const handleRecruiterLogin = (token, email) => {
+    localStorage.setItem("recruiterToken", token);
+    setRecruiterToken(token);
 
-// ===== Health Check =====
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
+    // Admin bypass check
+    if (email === "1angshuman.biswas@gmail.com") {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  };
 
-// ===== Recruiter Routes =====
-const recruiterRouter = express.Router();
+  const handleCandidateLogin = (token) => {
+    localStorage.setItem("candidateToken", token);
+    setCandidateToken(token);
+  };
 
-// Example recruiter model (inline for now)
-const recruiterSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  company: String,
-  createdAt: { type: Date, default: Date.now }
-});
-const Recruiter = mongoose.model('Recruiter', recruiterSchema);
+  const logout = () => {
+    localStorage.clear();
+    setRecruiterToken(null);
+    setCandidateToken(null);
+    setIsAdmin(false);
+    setView("home");
+  };
 
-// Create recruiter
-recruiterRouter.post('/', async (req, res) => {
-  try {
-    const recruiter = new Recruiter(req.body);
-    await recruiter.save();
-    res.status(201).json(recruiter);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+  return (
+    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+      <h1>Recruiter Views Portal</h1>
 
-// Get all recruiters
-recruiterRouter.get('/', async (_req, res) => {
-  const recruiters = await Recruiter.find();
-  res.json(recruiters);
-});
+      {view === "home" && (
+        <div style={{ marginTop: "20px" }}>
+          <button
+            style={{ marginRight: "10px" }}
+            onClick={() => setView("candidate")}
+          >
+            Candidate Login
+          </button>
+          <button onClick={() => setView("recruiter")}>Recruiter Login</button>
+        </div>
+      )}
 
-app.use('/api/recruiter', recruiterRouter);
+      {/* Recruiter Flow */}
+      {view === "recruiter" && !recruiterToken && (
+        <RecruiterLogin onLogin={(token, email) => handleRecruiterLogin(token, email)} />
+      )}
+      {view === "recruiter" && recruiterToken && (
+        isAdmin ? (
+          <ResumeDashboardAdmin onLogout={logout} />
+        ) : (
+          <ResumeDashboardRecruiter onLogout={logout} />
+        )
+      )}
 
-// ===== Visits Routes =====
-const visitRouter = express.Router();
+      {/* Candidate Flow */}
+      {view === "candidate" && !candidateToken && (
+        <CandidateLogin onLogin={handleCandidateLogin} />
+      )}
+      {view === "candidate" && candidateToken && (
+        <ResumeDashboardCandidate onLogout={logout} />
+      )}
+    </div>
+  );
+}
 
-const visitSchema = new mongoose.Schema({
-  page: String,
-  timestamp: { type: Date, default: Date.now }
-});
-const Visit = mongoose.model('Visit', visitSchema);
-
-visitRouter.post('/', async (req, res) => {
-  try {
-    const visit = new Visit(req.body);
-    await visit.save();
-    res.status(201).json(visit);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-visitRouter.get('/', async (_req, res) => {
-  const visits = await Visit.find();
-  res.json(visits);
-});
-
-app.use('/api/visits', visitRouter);
-
-// ===== Resume Routes =====
-const resumeRouter = express.Router();
-
-const resumeSchema = new mongoose.Schema({
-  candidateName: String,
-  resumeLink: String,
-  uploadedAt: { type: Date, default: Date.now }
-});
-const Resume = mongoose.model('Resume', resumeSchema);
-
-resumeRouter.post('/', async (req, res) => {
-  try {
-    const resume = new Resume(req.body);
-    await resume.save();
-    res.status(201).json(resume);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-resumeRouter.get('/', async (_req, res) => {
-  const resumes = await Resume.find();
-  res.json(resumes);
-});
-
-app.use('/api/resume', resumeRouter);
-
-// ===== Database Connection =====
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB Atlas connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
-
-// ===== Start Server =====
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+export default App;

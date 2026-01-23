@@ -1,9 +1,44 @@
-const express = require('express');
-const router = express.Router();
+const mongoose = require("mongoose");
 
-// Example recruiter route
-router.get('/', (req, res) => {
-  res.json({ message: 'Recruiter route working!' });
-});
+const recruiterSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true
+    },
+    password: {
+      type: String,
+      required: true
+    },
+    role: {
+      type: String,
+      default: "recruiter"
+    },
+    phone: {
+      type: String,
+      default: null
+    },
+    otpCode: {
+      type: String,
+      default: null
+    },
+    otpExpiry: {
+      type: Date,
+      default: null
+    },
+    lastLogin: {
+      type: Date,
+      default: null
+    }
+  },
+  {
+    timestamps: true,
+    collection: "Recruiters" // 👈 ensures it matches your Atlas collection
+  }
+);
 
-module.exports = router;
+const Recruiter = mongoose.model("Recruiter", recruiterSchema);
+module.exports = Recruiter;
