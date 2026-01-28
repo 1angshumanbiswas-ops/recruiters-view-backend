@@ -180,6 +180,30 @@ app.get("/api/recruiters/visits", async (req, res) => {
   }
 });
 
+/* ---------------- Activity Logging ---------------- */
+const activitySchema = new mongoose.Schema({
+  identifier: String,
+  role: String,
+  action: String,
+  target: String,
+  metadata: Object,
+  timestamp: { type: Date, default: Date.now }
+});
+const Activity = mongoose.model("Activity", activitySchema);
+
+app.post("/api/activity/log", async (req, res) => {
+  const { identifier, role, action, target, metadata } = req.body;
+
+  try {
+    const activity = new Activity({ identifier, role, action, target, metadata });
+    await activity.save();
+    res.status(201).json({ message: "Activity logged successfully." });
+  } catch (err) {
+    console.error("❌ Activity log error:", err);
+    res.status(500).json({ error: "Failed to log activity." });
+  }
+});
+
 /* ---------------- Root Endpoint ---------------- */
 app.get("/", (req, res) => {
   res.send("Recruiter Views Backend API is running...");
