@@ -1,15 +1,8 @@
 const mongoose = require("mongoose");
 
 const visitSchema = new mongoose.Schema({
-  recruiterId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Recruiter", // links to Recruiter profile
-    required: false
-  },
-  name: { type: String, required: true },
-  email: { type: String, required: true },
-  phone: { type: String, required: true },
-  pageVisited: { type: String, default: "login" }, // e.g., login, dashboard, resume
+  recruiterEmail: { type: String, required: true },
+  company: { type: String, default: "NA" },
   timestamp: { type: Date, default: Date.now }
 });
 

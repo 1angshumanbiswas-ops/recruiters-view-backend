@@ -14,13 +14,7 @@ function App() {
   const handleRecruiterLogin = (token, email) => {
     localStorage.setItem("recruiterToken", token);
     setRecruiterToken(token);
-
-    // Admin bypass check
-    if (email === "1angshuman.biswas@gmail.com") {
-      setIsAdmin(true);
-    } else {
-      setIsAdmin(false);
-    }
+    setIsAdmin(email === "1angshuman.biswas@gmail.com");
   };
 
   const handleCandidateLogin = (token) => {
@@ -41,35 +35,33 @@ function App() {
       <h1>Recruiter Views Portal</h1>
 
       {view === "home" && (
-        <div style={{ marginTop: "20px" }}>
-          <button
-            style={{ marginRight: "10px" }}
-            onClick={() => setView("candidate")}
-          >
-            Candidate Login
-          </button>
-          <button onClick={() => setView("recruiter")}>Recruiter Login</button>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
+          <div style={{ width: "48%" }}>
+            <h2>Recruiter Access</h2>
+            {!recruiterToken ? (
+              <RecruiterLogin onLogin={handleRecruiterLogin} />
+            ) : isAdmin ? (
+              <ResumeDashboardAdmin onLogout={logout} />
+            ) : (
+              <ResumeDashboardRecruiter onLogout={logout} />
+            )}
+          </div>
+
+          <div style={{ width: "48%" }}>
+            <h2>Candidate Access</h2>
+            {!candidateToken ? (
+              <CandidateLogin onLogin={handleCandidateLogin} />
+            ) : (
+              <ResumeDashboardCandidate onLogout={logout} />
+            )}
+          </div>
         </div>
       )}
 
-      {/* Recruiter Flow */}
-      {view === "recruiter" && !recruiterToken && (
-        <RecruiterLogin onLogin={(token, email) => handleRecruiterLogin(token, email)} />
-      )}
-      {view === "recruiter" && recruiterToken && (
-        isAdmin ? (
-          <ResumeDashboardAdmin onLogout={logout} />
-        ) : (
-          <ResumeDashboardRecruiter onLogout={logout} />
-        )
-      )}
-
-      {/* Candidate Flow */}
-      {view === "candidate" && !candidateToken && (
-        <CandidateLogin onLogin={handleCandidateLogin} />
-      )}
-      {view === "candidate" && candidateToken && (
-        <ResumeDashboardCandidate onLogout={logout} />
+      {(view === "recruiter" || view === "candidate") && (
+        <button style={{ marginTop: "20px" }} onClick={logout}>
+          Sign Out
+        </button>
       )}
     </div>
   );

@@ -1,36 +1,101 @@
-const express = require("express");
-const router = express.Router();
-const RecruiterVisit = require("../models/RecruiterVisit");
+import React, { useState } from "react";
 
-// GET all recruiter visits
-router.get("/", async (req, res) => {
-  try {
-    const visits = await RecruiterVisit.find();
-    res.json(visits);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch recruiter visits" });
-  }
-});
+function RecruiterLogin({ onLogin }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    company: ""
+  });
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState("form"); // 'form' or 'otp'
 
-// GET a recruiter visit by ID
-router.get("/:id", async (req, res) => {
-  try {
-    const visit = await RecruiterVisit.findById(req.params.id);
-    if (!visit) return res.status(404).json({ error: "Recruiter visit not found" });
-    res.json(visit);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch recruiter visit" });
-  }
-});
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-// DELETE a recruiter visit by ID
-router.delete("/:id", async (req, res) => {
-  try {
-    await RecruiterVisit.findByIdAndDelete(req.params.id);
-    res.json({ message: "Recruiter visit deleted" });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to delete recruiter visit" });
-  }
-});
+  const requestOtp = async () => {
+    // Call backend to send OTP
+    // For now, simulate OTP request
+    setStep("otp");
+  };
 
-module.exports = router;
+  const verifyOtp = async () => {
+    // Call backend to verify OTP
+    // Simulate success
+    const token = "mock-recruiter-token";
+    onLogin(token, formData.email);
+  };
+
+  return (
+    <div className="card">
+      <div className="tab-header">Recruiter Login</div>
+      {step === "form" && (
+        <form>
+          <div className="input-group">
+            <label>Name</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Enter name"
+            />
+          </div>
+          <div className="input-group">
+            <label>Email</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter email"
+            />
+          </div>
+          <div className="input-group">
+            <label>Mobile</label>
+            <input
+              type="text"
+              name="mobile"
+              value={formData.mobile}
+              onChange={handleChange}
+              placeholder="Enter mobile number"
+            />
+          </div>
+          <div className="input-group">
+            <label>Company (optional)</label>
+            <input
+              type="text"
+              name="company"
+              value={formData.company}
+              onChange={handleChange}
+              placeholder="Enter company"
+            />
+          </div>
+          <button type="button" onClick={requestOtp}>
+            Request OTP
+          </button>
+        </form>
+      )}
+
+      {step === "otp" && (
+        <form>
+          <div className="input-group">
+            <label>Enter OTP</label>
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="6-digit OTP"
+            />
+          </div>
+          <button type="button" onClick={verifyOtp}>
+            Verify & Login
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export default RecruiterLogin;

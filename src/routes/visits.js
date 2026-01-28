@@ -1,9 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
+const visitsController = require("../controllers/visitsController");
 
-// Example visits route
-router.get('/', (req, res) => {
-  res.json({ message: 'Visits route working!' });
-});
+// GET /api/recruiters/visits?period=week|month|quarter
+router.get("/visits", visitsController.getRecruiterVisits);
 
 module.exports = router;

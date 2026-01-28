@@ -1,112 +1,106 @@
 import React, { useState } from "react";
 
 function RecruiterLogin({ onLogin }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mobile, setMobile] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    company: ""
+  });
   const [otp, setOtp] = useState("");
+  const [step, setStep] = useState("form");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const backendURL = "https://recruiters-view-backend.onrender.com";
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  // Email + Password Login
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
+  const requestOtp = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`${backendURL}/login`, {
+      const res = await fetch("http://localhost:5500/api/recruiters/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ mobile: formData.mobile })
       });
       const data = await res.json();
-      if (res.ok) {
-        // Store recruiter details
-        localStorage.setItem("recruiterToken", data.token);
-        localStorage.setItem("recruiterName", data.recruiter?.name || "");
-        localStorage.setItem("recruiterEmail", data.recruiter?.email || email);
-        localStorage.setItem("recruiterMobile", data.recruiter?.mobile || "");
-
-        // Pass token + email back to App.js
-        onLogin(data.token, email);
-      } else {
-        alert(data.message || "Login failed");
-      }
+      console.log("OTP sent:", data);
+      setStep("otp");
     } catch (err) {
-      console.error(err);
-      alert("Error connecting to server");
+      console.error("OTP request error:", err);
+      setError("Failed to send OTP. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Mobile + OTP Login
-  const handleOtpLogin = async (e) => {
-    e.preventDefault();
+  const verifyOtp = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`${backendURL}/otp-login`, {
+      const res = await fetch("http://localhost:5500/api/recruiters/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile, otp }),
+        body: JSON.stringify({ ...formData, otp })
       });
       const data = await res.json();
-      if (res.ok) {
-        // Store recruiter details
-        localStorage.setItem("recruiterToken", data.token);
-        localStorage.setItem("recruiterName", data.recruiter?.name || "");
-        localStorage.setItem("recruiterEmail", data.recruiter?.email || "");
-        localStorage.setItem("recruiterMobile", data.recruiter?.mobile || mobile);
-
-        // Pass token + mobile back to App.js
-        onLogin(data.token, mobile);
+      console.log("OTP verified:", data);
+      if (data.token) {
+        onLogin(data.token, formData.email);
       } else {
-        alert(data.message || "OTP login failed");
+        setError("Invalid OTP or login failed.");
       }
     } catch (err) {
-      console.error(err);
-      alert("Error connecting to server");
+      console.error("OTP verify error:", err);
+      setError("Verification failed. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="card">
-      <h2>Recruiter Login</h2>
+      <div className="tab-header">Recruiter Login</div>
+      {step === "form" && (
+        <form>
+          {["name", "email", "mobile", "company"].map((field) => (
+            <div className="input-group" key={field}>
+              <label>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+              <input
+                type="text"
+                name={field}
+                value={formData[field]}
+                onChange={handleChange}
+                placeholder={`Enter ${field}`}
+              />
+            </div>
+          ))}
+          <button type="button" onClick={requestOtp} disabled={loading}>
+            {loading ? "Sending OTP..." : "Request OTP"}
+          </button>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+        </form>
+      )}
 
-      {/* Email + Password Login */}
-      <form onSubmit={handleEmailLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        /><br />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        /><br />
-        <button type="submit">Login with Email</button>
-      </form>
-
-      <hr />
-
-      {/* Mobile + OTP Login */}
-      <form onSubmit={handleOtpLogin}>
-        <input
-          type="text"
-          placeholder="Mobile Number"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value)}
-          required
-        /><br />
-        <input
-          type="text"
-          placeholder="6-digit OTP"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          required
-        /><br />
-        <button type="submit">Login with OTP</button>
-      </form>
+      {step === "otp" && (
+        <form>
+          <div className="input-group">
+            <label>Enter OTP</label>
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="6-digit OTP"
+            />
+          </div>
+          <button type="button" onClick={verifyOtp} disabled={loading}>
+            {loading ? "Verifying..." : "Verify & Login"}
+          </button>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+        </form>
+      )}
     </div>
   );
 }
