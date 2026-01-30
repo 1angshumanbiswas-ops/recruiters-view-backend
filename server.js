@@ -246,3 +246,22 @@ cron.schedule("0 3 * * *", async () => {
   try {
     const result = await Activity.deleteMany({
       role: "recruiter",
+            role: "recruiter",
+      timestamp: { $lt: cutoff }
+    });
+    console.log(`🧹 Auto-deleted ${result.deletedCount} recruiter logs older than 3 months`);
+  } catch (err) {
+    console.error("❌ Auto-delete failed:", err);
+  }
+});
+
+/* ---------------- Root Endpoint ---------------- */
+app.get("/", (req, res) => {
+  res.send("Recruiter Views Backend API is running...");
+});
+
+/* ---------------- Port ---------------- */
+const PORT = process.env.PORT || 5500;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
