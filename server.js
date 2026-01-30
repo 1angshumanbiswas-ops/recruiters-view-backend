@@ -199,7 +199,6 @@ app.post("/api/activity/log", async (req, res) => {
   }
 });
 
-// Superadmin: Filter logs by date range
 app.get("/api/activity/logs/filter", isSuperadmin, async (req, res) => {
   const { range, start, end } = req.query;
   let fromDate, toDate = new Date();
@@ -229,7 +228,6 @@ app.get("/api/activity/logs/filter", isSuperadmin, async (req, res) => {
   }
 });
 
-// Superadmin: Delete log by ID
 app.delete("/api/activity/log/:id", isSuperadmin, async (req, res) => {
   try {
     await Activity.findByIdAndDelete(req.params.id);
@@ -240,10 +238,11 @@ app.delete("/api/activity/log/:id", isSuperadmin, async (req, res) => {
   }
 });
 
-// Cron job: Auto-delete recruiter logs older than 3 months
+/* ---------------- Cron Job ---------------- */
 cron.schedule("0 3 * * *", async () => {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - 3);
 
   try {
-   
+    const result = await Activity.deleteMany({
+      role: "recruiter",
