@@ -1,9 +1,9 @@
-// server.js
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const multer = require("multer");
+const cron = require("node-cron");
 
 dotenv.config();
 
@@ -19,6 +19,15 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("✅ MongoDB Atlas connected"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
+/* ---------------- Middleware ---------------- */
+function isSuperadmin(req, res, next) {
+  const email = req.query.email || req.body.email;
+  if (email !== "1angshuman.biswas@gmail.com") {
+    return res.status(403).json({ error: "Access denied: Superadmin only" });
+  }
+  next();
+}
+
 /* ---------------- Recruiter Schema + Routes ---------------- */
 const recruiterSchema = new mongoose.Schema({
   name: String,
@@ -29,7 +38,6 @@ const recruiterSchema = new mongoose.Schema({
 });
 const Recruiter = mongoose.model("Recruiter", recruiterSchema);
 
-// Register recruiter
 app.post("/api/recruiters/register", async (req, res) => {
   const { name, email, phone, company } = req.body;
   if (!email) return res.status(400).json({ error: "Email is required" });
@@ -47,15 +55,7 @@ app.post("/api/recruiters/register", async (req, res) => {
   }
 });
 
-// Superadmin recruiter data
-app.get("/api/superadmin/recruiters", async (req, res) => {
-  const requester = req.query.email;
-  const superadminEmail = "1angshuman.biswas@gmail.com";
-
-  if (requester !== superadminEmail) {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
+app.get("/api/superadmin/recruiters", isSuperadmin, async (req, res) => {
   try {
     const recruiters = await Recruiter.find().sort({ createdAt: -1 });
     res.json({ recruiters });
@@ -81,7 +81,6 @@ const Candidate = mongoose.model("Candidate", candidateSchema);
 
 const upload = multer({ dest: "uploads/" });
 
-// Upload CV
 app.post("/api/candidates/upload-cv", upload.single("cv"), async (req, res) => {
   const { name, email } = req.body;
   const { filename, originalname } = req.file;
@@ -101,7 +100,6 @@ app.post("/api/candidates/upload-cv", upload.single("cv"), async (req, res) => {
   }
 });
 
-// Get all candidates
 app.get("/candidates", async (req, res) => {
   try {
     const candidates = await Candidate.find();
@@ -112,7 +110,6 @@ app.get("/candidates", async (req, res) => {
   }
 });
 
-// Delete CV
 app.delete("/admin/delete-cv/:cvId", async (req, res) => {
   const { cvId } = req.params;
 
@@ -137,7 +134,6 @@ const visitSchema = new mongoose.Schema({
 });
 const Visit = mongoose.model("Visit", visitSchema);
 
-// Track recruiter visit
 app.post("/api/recruiters/track-visit", async (req, res) => {
   const { recruiterEmail, company } = req.body;
   if (!recruiterEmail) return res.status(400).json({ error: "Recruiter email is required" });
@@ -152,7 +148,6 @@ app.post("/api/recruiters/track-visit", async (req, res) => {
   }
 });
 
-// Get recruiter visits analytics
 app.get("/api/recruiters/visits", async (req, res) => {
   const { period = "week" } = req.query;
   const now = new Date();
@@ -204,13 +199,51 @@ app.post("/api/activity/log", async (req, res) => {
   }
 });
 
-/* ---------------- Root Endpoint ---------------- */
-app.get("/", (req, res) => {
-  res.send("Recruiter Views Backend API is running...");
+// Superadmin: Filter logs by date range
+app.get("/api/activity/logs/filter", isSuperadmin, async (req, res) => {
+  const { range, start, end } = req.query;
+  let fromDate, toDate = new Date();
+
+  if (range === "week") {
+    fromDate = new Date();
+    fromDate.setDate(toDate.getDate() - 7);
+  } else if (range === "month") {
+    fromDate = new Date();
+    fromDate.setMonth(toDate.getMonth() - 1);
+  } else if (range === "custom" && start && end) {
+    fromDate = new Date(start);
+    toDate = new Date(end);
+  } else {
+    fromDate = new Date("2000-01-01");
+  }
+
+  try {
+    const logs = await Activity.find({
+      timestamp: { $gte: fromDate, $lte: toDate }
+    }).sort({ timestamp: -1 });
+
+    res.json({ activities: logs });
+  } catch (err) {
+    console.error("❌ Filter fetch failed:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
-/* ---------------- Port ---------------- */
-const PORT = process.env.PORT || 5500;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Superadmin: Delete log by ID
+app.delete("/api/activity/log/:id", isSuperadmin, async (req, res) => {
+  try {
+    await Activity.findByIdAndDelete(req.params.id);
+    res.json({ message: "Log deleted" });
+  } catch (err) {
+    console.error("❌ Delete failed:", err);
+    res.status(500).json({ error: "Delete failed" });
+  }
 });
+
+// Cron job: Auto-delete recruiter logs older than 3 months
+cron.schedule("0 3 * * *", async () => {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 3);
+
+  try {
+   
